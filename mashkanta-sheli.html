@@ -5,6 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>משכנתא שלי</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- EmailJS SDK - הגדר את ה-Public Key שלך ב-emailjs.init() -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <script type="text/javascript">
+        // כדי להפעיל את EmailJS:
+        // 1. הירשם ב-https://www.emailjs.com/ (חינם עד 200 מיילים בחודש)
+        // 2. צור Service (לדוגמה Gmail)
+        // 3. צור Template למיילים
+        // 4. החלף את YOUR_PUBLIC_KEY ב-Public Key שלך
+        // emailjs.init("YOUR_PUBLIC_KEY");
+    </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap');
         
@@ -293,29 +303,92 @@
             setTimeout(() => toast.remove(), 5000);
         }
 
+        // Open notification modal
+        function openNotificationModal() {
+            const modal = document.getElementById('notificationModal');
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            
+            // Check if user has prime track
+            const hasPrime = state.tracks && state.tracks.some(t => t.type === 'prime');
+            const primeInfo = document.getElementById('primeAlertInfo');
+            if (primeInfo) {
+                primeInfo.style.display = hasPrime ? 'flex' : 'none';
+            }
+        }
+
+        // Close notification modal
+        function closeNotificationModal() {
+            const modal = document.getElementById('notificationModal');
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
         // Subscribe to notifications
         function subscribeToNotifications() {
             const email = document.getElementById('notificationEmail') ? document.getElementById('notificationEmail').value : '';
-            const exitAlerts = document.getElementById('exitPointAlerts') ? document.getElementById('exitPointAlerts').checked : false;
             const exitTiming = document.getElementById('exitPointTiming') ? document.getElementById('exitPointTiming').value : 'month';
-            const interestAlerts = document.getElementById('interestRateAlerts') ? document.getElementById('interestRateAlerts').checked : false;
 
             if (!email || !validateEmail(email)) {
                 alert('נא להזין כתובת אימייל תקינה');
                 return;
             }
 
+            // Check what track types user has
+            const hasVariableTracks = state.tracks && state.tracks.some(t => 
+                ['variable-linked', 'variable-unlinked'].includes(t.type)
+            );
+            const hasPrimeTrack = state.tracks && state.tracks.some(t => t.type === 'prime');
+
             state.notifications = {
                 email: email,
-                exitPointAlerts: exitAlerts,
+                exitPointAlerts: hasVariableTracks, // Auto-enable if has variable tracks
                 exitPointTiming: exitTiming,
-                interestRateAlerts: interestAlerts,
+                interestRateAlerts: hasPrimeTrack, // Auto-enable if has prime track
                 isSubscribed: true
             };
 
             saveState();
+            closeNotificationModal();
             showNotification('נרשמת בהצלחה לקבלת התראות!');
+            
+            // Send welcome email via EmailJS (if configured)
+            sendWelcomeEmail(email);
+            
             render();
+        }
+        
+        // Send welcome email
+        function sendWelcomeEmail(email) {
+            // EmailJS integration - uncomment and configure when ready
+            /*
+            emailjs.send("YOUR_SERVICE_ID", "YOUR_TEMPLATE_ID", {
+                to_email: email,
+                subject: "ברוכים הבאים למשכנתא שלי",
+                message: "נרשמת בהצלחה לקבלת התראות על המשכנתא שלך!"
+            });
+            */
+            console.log('Welcome email would be sent to:', email);
+        }
+        
+        // Send exit point notification email
+        function sendExitPointEmail(email, exitPoint) {
+            const trackTypeLabel = trackTypes.find(t => t.value === exitPoint.trackType)?.label || exitPoint.trackType;
+            const emailData = {
+                to_email: email,
+                subject: 'המשכנתא שלי - התראה על נקודת יציאה קרובה',
+                track_name: exitPoint.trackName,
+                track_type: trackTypeLabel,
+                exit_date: exitPoint.date.toLocaleDateString('he-IL'),
+                months_from_now: exitPoint.monthsFromNow,
+                is_end_of_track: exitPoint.isEndOfTrack
+            };
+            
+            // EmailJS integration - uncomment and configure when ready
+            /*
+            emailjs.send("YOUR_SERVICE_ID", "YOUR_EXIT_TEMPLATE_ID", emailData);
+            */
+            console.log('Exit point email would be sent:', emailData);
         }
 
         // Unsubscribe
@@ -832,6 +905,7 @@
                             </div>
 
                             <!-- Bank of Israel Interest Rate Section -->
+                            ${state.tracks && state.tracks.some(t => t.type === 'prime') ? `
                             <div class="mt-8 pt-6 border-t">
                                 <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                                     <span>📊</span> ריבית בנק ישראל
@@ -852,108 +926,81 @@
                                     </div>
                                 </div>
                             </div>
+                            ` : ''}
 
-                            <!-- Exit Points Section -->
+                            <!-- Exit Points Section - All variable tracks -->
                             ${(() => {
                                 const exitPoints = calculateExitPoints();
-                                const upcomingExits = exitPoints.filter(ep => ep.monthsFromNow <= 6);
-                                if (upcomingExits.length === 0) return '';
+                                if (exitPoints.length === 0) return '';
                                 return `
                                 <div class="mt-6 pt-6 border-t">
                                     <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                                        <span>📅</span> נקודות יציאה קרובות
+                                        <span>📅</span> נקודות יציאה במסלולים
                                     </h3>
+                                    <p class="text-sm text-gray-600 mb-3">נקודות יציאה הן מועדים בהם ניתן לבצע שינויים במסלול ללא קנס</p>
                                     <div class="space-y-2">
-                                        ${upcomingExits.map(ep => `
-                                            <div class="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                                        ${exitPoints.slice(0, 5).map(ep => {
+                                            const trackTypeLabel = trackTypes.find(t => t.value === ep.trackType)?.label || ep.trackType;
+                                            const isClose = ep.monthsFromNow <= 3;
+                                            return `
+                                            <div class="p-3 ${isClose ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50 border-gray-200'} rounded-lg border">
                                                 <div class="flex justify-between items-center">
                                                     <div>
                                                         <div class="font-semibold text-gray-800">${ep.trackName}</div>
-                                                        <div class="text-sm text-gray-600">${ep.isEndOfTrack ? 'סיום מסלול' : 'נקודת עדכון ריבית'}</div>
+                                                        <div class="text-sm text-gray-600">${trackTypeLabel}</div>
+                                                        <div class="text-xs text-gray-500">${ep.isEndOfTrack ? 'סיום מסלול' : 'נקודת עדכון ריבית'}</div>
                                                     </div>
                                                     <div class="text-left">
                                                         <div class="text-sm text-gray-600">${ep.date.toLocaleDateString('he-IL')}</div>
-                                                        <div class="text-sm font-semibold text-yellow-700">בעוד ${ep.monthsFromNow} חודשים</div>
+                                                        <div class="text-sm font-semibold ${isClose ? 'text-yellow-700' : 'text-gray-700'}">
+                                                            ${ep.monthsFromNow <= 1 ? 'בקרוב!' : 'בעוד ' + ep.monthsFromNow + ' חודשים'}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        `).join('')}
+                                            </div>`;
+                                        }).join('')}
+                                        ${exitPoints.length > 5 ? '<div class="text-sm text-gray-500 text-center mt-2">ועוד ' + (exitPoints.length - 5) + ' נקודות יציאה נוספות...</div>' : ''}
                                     </div>
                                 </div>`;
                             })()}
 
-                            <!-- Notifications Section -->
+                            <!-- Subscription Status (if subscribed) -->
+                            ${state.notifications && state.notifications.isSubscribed ? `
                             <div class="mt-6 pt-6 border-t">
-                                <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                                    <span>🔔</span> התראות
-                                </h3>
-                                
-                                ${state.notifications && state.notifications.isSubscribed ? `
-                                    <div class="bg-green-50 p-4 rounded-lg border border-green-200 mb-4">
-                                        <div class="flex items-center gap-2 text-green-700 mb-2">
-                                            <span>✓</span>
-                                            <span class="font-semibold">נרשמת לקבלת התראות</span>
-                                        </div>
-                                        <div class="text-sm text-gray-600 mb-2">
-                                            <div>אימייל: ${state.notifications.email}</div>
-                                            ${state.notifications.exitPointAlerts ? '<div>✓ התראות על נקודות יציאה</div>' : ''}
-                                            ${state.notifications.interestRateAlerts ? '<div>✓ התראות על שינויי ריבית בנק ישראל</div>' : ''}
-                                        </div>
-                                        <button onclick="unsubscribeFromNotifications()" 
-                                                class="text-sm text-red-600 hover:text-red-800 underline">
-                                            הסר אותי מרשימת התפוצה
-                                        </button>
+                                <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                                    <div class="flex items-center gap-2 text-green-700 mb-2">
+                                        <span>✓</span>
+                                        <span class="font-semibold">נרשמת לקבלת התראות</span>
                                     </div>
-                                ` : `
-                                    <div class="bg-gray-50 p-4 rounded-lg">
-                                        <p class="text-gray-600 mb-4">הירשמו לקבלת התראות על שינויים חשובים במשכנתא שלכם:</p>
-                                        
-                                        <div class="space-y-4">
-                                            <div>
-                                                <label class="block text-gray-700 font-semibold mb-2">כתובת אימייל:</label>
-                                                <input type="email" id="notificationEmail" 
-                                                       class="w-full border-2 border-gray-300 rounded-lg px-4 py-2"
-                                                       placeholder="example@email.com">
-                                            </div>
-                                            
-                                            <div class="space-y-2">
-                                                <label class="flex items-center gap-2 cursor-pointer">
-                                                    <input type="checkbox" id="exitPointAlerts" class="w-5 h-5 text-blue-600">
-                                                    <span class="text-gray-700">התראות לפני נקודות יציאה במסלולים</span>
-                                                </label>
-                                                
-                                                <div id="exitPointTimingDiv" class="mr-7">
-                                                    <label class="block text-sm text-gray-600 mb-1">כמה זמן לפני?</label>
-                                                    <select id="exitPointTiming" class="border border-gray-300 rounded px-3 py-1 text-sm">
-                                                        <option value="two-months">חודשיים לפני</option>
-                                                        <option value="six-weeks">חודש וחצי לפני</option>
-                                                        <option value="month" selected>חודש לפני</option>
-                                                        <option value="two-weeks">שבועיים לפני</option>
-                                                    </select>
-                                                </div>
-                                                
-                                                ${state.tracks && state.tracks.some(t => t.type === 'prime') ? `
-                                                <label class="flex items-center gap-2 cursor-pointer">
-                                                    <input type="checkbox" id="interestRateAlerts" class="w-5 h-5 text-blue-600">
-                                                    <span class="text-gray-700">התראות על שינויי ריבית בנק ישראל (משפיע על מסלול הפריים)</span>
-                                                </label>
-                                                ` : ''}
-                                            </div>
-                                            
-                                            <button onclick="subscribeToNotifications()" 
-                                                    class="w-full sketch-button px-6 py-2 text-lg font-semibold transition-all transform hover:scale-105">
-                                                הרשם לקבלת התראות
-                                            </button>
-                                        </div>
+                                    <div class="text-sm text-gray-600 mb-2">
+                                        <div>אימייל: ${state.notifications.email}</div>
+                                        <div>✓ התראות על נקודות יציאה (${
+                                            state.notifications.exitPointTiming === 'two-months' ? 'חודשיים לפני' :
+                                            state.notifications.exitPointTiming === 'six-weeks' ? 'חודש וחצי לפני' :
+                                            state.notifications.exitPointTiming === 'two-weeks' ? 'שבועיים לפני' : 'חודש לפני'
+                                        })</div>
+                                        ${state.tracks && state.tracks.some(t => t.type === 'prime') ? '<div>✓ התראות על שינויי ריבית בנק ישראל</div>' : ''}
                                     </div>
-                                `}
+                                    <button onclick="unsubscribeFromNotifications()" 
+                                            class="text-sm text-red-600 hover:text-red-800 underline">
+                                        הסר אותי מרשימת התפוצה
+                                    </button>
+                                </div>
                             </div>
+                            ` : ''}
 
-                            <div class="mt-8 pt-6 border-t">
+                            <!-- Action Buttons -->
+                            <div class="mt-8 pt-6 border-t flex gap-4">
                                 <button onclick="goToScreen('home')" 
-                                        class="w-full sketch-button-secondary px-6 py-3 text-lg font-semibold transition-all transform hover:scale-105">
-                                    התחל מחדש
+                                        class="flex-1 sketch-button-secondary px-6 py-3 text-lg font-semibold transition-all transform hover:scale-105">
+                                    חשב משכנתא חדשה
                                 </button>
+                                ${!(state.notifications && state.notifications.isSubscribed) ? `
+                                <button onclick="openNotificationModal()" 
+                                        class="flex-1 sketch-button px-6 py-3 text-lg font-semibold transition-all transform hover:scale-105">
+                                    🔔 הרשמה להתראות
+                                </button>
+                                ` : ''}
                             </div>
                         </div>
                     </div>
@@ -1162,5 +1209,70 @@
         // Initialize app
         render();
     </script>
+
+    <!-- Notification Modal -->
+    <div id="notificationModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeNotificationModal()" class="absolute top-4 left-4 text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <span>🔔</span> הרשמה להתראות
+            </h2>
+            
+            <p class="text-gray-600 mb-6">קבלו התראות חשובות על המשכנתא שלכם ישירות למייל!</p>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">כתובת אימייל:</label>
+                    <input type="email" id="notificationEmail" 
+                           class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-lg"
+                           placeholder="example@email.com">
+                </div>
+                
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <h3 class="font-semibold text-gray-800 mb-3">תקבלו התראות על:</h3>
+                    
+                    <div class="space-y-3">
+                        <div class="flex items-start gap-2">
+                            <span class="text-blue-600 mt-1">📅</span>
+                            <div>
+                                <div class="font-medium text-gray-800">נקודות יציאה במסלולים משתנים</div>
+                                <div class="text-sm text-gray-600">כל המסלולים המשתנים שלכם (מל"צ, מש"צ)</div>
+                            </div>
+                        </div>
+                        
+                        <div id="primeAlertInfo" class="flex items-start gap-2">
+                            <span class="text-indigo-600 mt-1">📊</span>
+                            <div>
+                                <div class="font-medium text-gray-800">שינויי ריבית בנק ישראל</div>
+                                <div class="text-sm text-gray-600">משפיע על מסלול הפריים שלכם</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">מתי לשלוח התראה לפני נקודת יציאה?</label>
+                    <select id="exitPointTiming" class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-lg">
+                        <option value="two-months">חודשיים לפני</option>
+                        <option value="six-weeks">חודש וחצי לפני</option>
+                        <option value="month" selected>חודש לפני</option>
+                        <option value="two-weeks">שבועיים לפני</option>
+                    </select>
+                    <p class="text-sm text-gray-500 mt-1">התזמון חל על כל נקודות היציאה בכל המסלולים</p>
+                </div>
+                
+                <button onclick="subscribeToNotifications()" 
+                        class="w-full sketch-button px-6 py-3 text-lg font-semibold transition-all transform hover:scale-105 mt-4">
+                    הרשמה לקבלת התראות
+                </button>
+                
+                <p class="text-xs text-gray-500 text-center mt-2">
+                    ניתן להסיר את ההרשמה בכל עת דרך הלינק במייל
+                </p>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
