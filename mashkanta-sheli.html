@@ -996,11 +996,16 @@
                                     חשב משכנתא חדשה
                                 </button>
                                 ${!(state.notifications && state.notifications.isSubscribed) ? `
-                                <button onclick="openNotificationModal()" 
+                                <button onclick="openNotificationModal()"
                                         class="flex-1 sketch-button px-6 py-3 text-lg font-semibold transition-all transform hover:scale-105">
                                     🔔 הרשמה להתראות
                                 </button>
-                                ` : ''}
+                                ` : `
+                                <button onclick="updateMortgageDetails()"
+                                        class="flex-1 sketch-button px-6 py-3 text-lg font-semibold transition-all transform hover:scale-105">
+                                    ✏️ עדכון פרטי משכנתא
+                                </button>
+                                `}
                             </div>
                         </div>
                     </div>
@@ -1013,6 +1018,27 @@
             clearErrorFields();
             state.screen = screen;
             render();
+        }
+
+        // Update mortgage details for subscribed users
+        function updateMortgageDetails() {
+            // Preserve notification settings
+            const savedNotifications = { ...state.notifications };
+
+            // Reset mortgage data
+            state.bankName = '';
+            state.totalAmount = '';
+            state.numberOfTracks = 1;
+            state.firstPaymentDate = '';
+            state.tracks = [];
+            state.currentTrackIndex = 0;
+
+            // Restore notification settings
+            state.notifications = savedNotifications;
+
+            // Save state and go to home screen
+            saveState();
+            goToScreen('home');
         }
 
         function updateNumberOfTracks() {
