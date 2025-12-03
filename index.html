@@ -612,7 +612,14 @@
                             </div>
 
                             <div class="mt-8 pt-6 border-t">
-                                <button onclick="goToScreen('home')" 
+                                <button onclick="openNotificationModal()"
+                                        class="w-full sketch-button px-6 py-4 text-lg font-semibold transition-all transform hover:scale-105 mb-4 flex items-center justify-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                    </svg>
+                                    הרשמה לתזכורות
+                                </button>
+                                <button onclick="goToScreen('home')"
                                         class="w-full sketch-button-secondary px-6 py-3 text-lg font-semibold transition-all transform hover:scale-105">
                                     התחל מחדש
                                 </button>
@@ -828,8 +835,134 @@
             }
         }
 
+        // Notification Modal Functions
+        function openNotificationModal() {
+            document.getElementById('notificationModal').classList.remove('hidden');
+        }
+
+        function closeNotificationModal() {
+            document.getElementById('notificationModal').classList.add('hidden');
+            // Clear form
+            document.getElementById('notifyFirstName').value = '';
+            document.getElementById('notifyLastName').value = '';
+            document.getElementById('notifyEmail').value = '';
+            document.getElementById('notifyTiming').value = '2months';
+        }
+
+        function submitNotificationForm(event) {
+            event.preventDefault();
+
+            const firstName = document.getElementById('notifyFirstName').value.trim();
+            const lastName = document.getElementById('notifyLastName').value.trim();
+            const email = document.getElementById('notifyEmail').value.trim();
+            const timing = document.getElementById('notifyTiming').value;
+
+            // Simple validation
+            if (!firstName || !lastName || !email) {
+                alert('נא למלא את כל השדות');
+                return;
+            }
+
+            // Email validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                alert('נא להזין כתובת אימייל תקינה');
+                return;
+            }
+
+            // Here you would normally send the data to a server
+            // For now, we'll just show a success message
+            const timingLabels = {
+                '2months': 'חודשיים',
+                '6weeks': 'חודש וחצי',
+                '1month': 'חודש',
+                '2weeks': 'שבועיים'
+            };
+
+            alert(`תודה ${firstName}! נרשמת בהצלחה לקבלת תזכורות.\n\nתקבל/י התראה ${timingLabels[timing]} לפני כל נקודת יציאה במסלולים שלך.`);
+            closeNotificationModal();
+        }
+
         // Initialize app
         render();
     </script>
+
+    <!-- Notification Modal -->
+    <div id="notificationModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <!-- Backdrop -->
+            <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onclick="closeNotificationModal()"></div>
+
+            <!-- Modal Content -->
+            <div class="relative bg-white rounded-2xl shadow-xl max-w-md w-full p-8 transform transition-all"
+                 style="border: 3px solid #6b6b6b;">
+
+                <!-- Close Button -->
+                <button onclick="closeNotificationModal()"
+                        class="absolute top-4 left-4 text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+
+                <!-- Header -->
+                <div class="text-center mb-6">
+                    <div class="mx-auto w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800">הרשמה לתזכורות</h3>
+                    <p class="text-gray-600 mt-2">קבל/י תזכורת לפני נקודות היציאה במסלולי המשכנתא שלך</p>
+                </div>
+
+                <!-- Form -->
+                <form onsubmit="submitNotificationForm(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">שם פרטי:</label>
+                        <input type="text" id="notifyFirstName"
+                               class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-lg focus:border-amber-500 focus:outline-none"
+                               placeholder="הזן/י שם פרטי">
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">שם משפחה:</label>
+                        <input type="text" id="notifyLastName"
+                               class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-lg focus:border-amber-500 focus:outline-none"
+                               placeholder="הזן/י שם משפחה">
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">אימייל:</label>
+                        <input type="email" id="notifyEmail"
+                               class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-lg focus:border-amber-500 focus:outline-none"
+                               placeholder="example@email.com"
+                               dir="ltr">
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">מתי לקבל תזכורת?</label>
+                        <select id="notifyTiming"
+                                class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-lg focus:border-amber-500 focus:outline-none">
+                            <option value="2months">חודשיים לפני נקודת יציאה</option>
+                            <option value="6weeks">חודש וחצי לפני נקודת יציאה</option>
+                            <option value="1month">חודש לפני נקודת יציאה</option>
+                            <option value="2weeks">שבועיים לפני נקודת יציאה</option>
+                        </select>
+                    </div>
+
+                    <div class="pt-4">
+                        <button type="submit"
+                                class="w-full sketch-button px-6 py-4 text-lg font-semibold transition-all transform hover:scale-105 flex items-center justify-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                            הרשמה
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
